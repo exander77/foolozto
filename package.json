@@ -1,0 +1,17 @@
+{
+  "name": "foolozto",
+  "version": "1.0",
+  "description": "Foolož.to",
+  "main": "foolozto",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^2.20.0",
+    "notevil": "^1.3.1",
+    "request": "^2.88.0",
+    "x-ray": "^2.3.3"
+  }
+}

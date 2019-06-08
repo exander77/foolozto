@@ -1,0 +1,87 @@
+#!/usr/bin/nodejs
+const fs = require('fs')
+const util = require('util')
+const Xray = require('x-ray')
+const x = Xray().delay('1s', '3s')
+const Request = require('request')
+const safeEval = require('notevil')
+const commander = require('commander')
+
+const Decoder = require('./lib/decoder')
+
+const package = require('./package.json')
+
+commander
+  .version(package.version, '-v, --version')
+  .usage('[OPTIONS] <keywords ...>')
+  .option('-p, --pages <number>', 'maximum number of pages', 1)
+  .option('-s, --seasons <string>', 'maximum number of pages', false)
+  .option('-x, --proxy <string>', 'proxy', false)
+  .option('-d, --pages debug', 'debug', false)
+  .parse(process.argv)
+
+if (commander.seasons) commander.seasons = commander.seasons.split(',')
+
+Array.prototype.random = function() {
+  return this[Math.floor(Math.random()*this.length)]
+}
+
+const j = Request.jar()
+const options = {
+    method: "GET",
+    jar: j,
+    proxy: commander.proxy,
+    headers: {
+        'X-Requested-With': "XMLHttpRequest"
+    }
+}
+
+var prefix = 'https://uloz.to'
+var partner = '?partner=14364270'
+var request = Request.defaults(options)
+var searchText = encodeURIComponent(commander.args.join(' '))
+
+var driver = function driver(context, callback) {
+    var url = context.url
+    request(url, function(err, response, body) {
+        if (!err) {
+          var json = JSON.parse(body)
+          body = json.items + json.paging
+        }
+        return callback(err, body)
+    })
+};
+
+x.driver(driver)
+  
+function search(searchText) {
+  x(searchText, ['script'])
+    .paginate('.paginator a.next@href')
+    .limit(commander.pages)
+    .then(function (res) {
+      for (var j = 0; j < res.length; ++j) {
+        var evaluated = safeEval(res[j] + '; var x = {kn: kn, ad: ad}; x')
+        var decoder = new Decoder(evaluated.ad[0][1])
+        for (var i in evaluated.kn) {
+          var decoded = decoder.decrypt(evaluated.kn[i])
+          x(decoded, {name: '.name a@title', info: ['.media-info li'], href: ['.quickDownload a@href']})
+            .then(function (res) {
+              var name = Buffer.from(res.name, 'binary').toString()
+              var size = res.info[1].trim().split(' ').slice(1).join('').slice(0, -1).replace('.', ',')
+              var href = prefix + (res.href+'').split('?')[0] + partner
+              console.log(util.format('%s\t%s\t', href, size.padStart(6), name))
+              /*Request.head(href, function(err, response, body) {
+                console.log(response.request.uri.href, size, name)
+              })*/
+            })
+        }
+      }
+    })
+    .catch(function(err) {
+      if (commander.debug) console.error('Error:', err)
+    });
+}
+
+if (!commander.seasons) search(prefix + '/hledej?q=' + searchText);
+else {
+}

@@ -1,0 +1,3 @@
+[submodule "ulozto_downloader"]
+	path = ulozto_downloader
+	url = git@github.com:exander77/ulozto_downloader.git
